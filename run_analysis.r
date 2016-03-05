@@ -10,10 +10,11 @@ download.file(fileUrl, "./data/activity.zip") ## download the file
 
 unzip("./data/activity.zip") ## unzip the file
 
-## read in train in data and labels
+## read in train data, subject, and activity labels
 
 train <- read.table("./UCI HAR Dataset/train/X_train.txt") ## train data
 trainlabels <- read.table("./UCI HAR Dataset/train/y_train.txt") ## train labels i.e. rownames
+trainsubject <- read.table("./UCI HAR Dataset/train/subject_train.txt") ## read in subjects
 
 colnames(trainlabels) <- "activitycode" ## assign a meaninful column names
 
@@ -21,8 +22,9 @@ colnames(trainlabels) <- "activitycode" ## assign a meaninful column names
 
 test <- read.table("./UCI HAR Dataset/test/X_test.txt") ## test data
 testlabels<- read.table("./UCI HAR Dataset/test/y_test.txt") ## test labels i.e. rownames
+testsubject <- read.table("./UCI HAR Dataset/test/subject_test.txt") ## read in subjects
 
-colnames(testlabels) <- "activitycode" ## assign a meaningful column name
+colnames(testlabels) <- "activitycode" ## assign a meaninful column names
 
 ## decode the labels
 
@@ -35,10 +37,10 @@ colnames(activitylabels) <- c("activitycode","activity") ## assign some meaningf
 trainlabels <- merge(trainlabels, activitylabels, by = "activitycode", all = TRUE, sort = FALSE) 
 testlabels <- merge(testlabels, activitylabels, by = "activitycode", all = TRUE, sort = FALSE)
 
-## bind the label data to test and train data
+## bind the subject and activity lables to test and train data
 
-testdata <- cbind(test, testlabels)
-traindata <- cbind(train, trainlabels)
+testdata <- cbind(testsubject, testlabels, test)
+traindata <- cbind(trainsubject, trainlabels, train)
 
 ## merge train and test into one data set
 
@@ -49,30 +51,29 @@ activity <- rbind(testdata, traindata)
 features <- read.table("./UCI HAR Dataset/features.txt", stringsAsFactors = FALSE) ## read in feature (column) names
 colnames(features) <- c("feature","featurename")
 
-colnames(activity)[1:561] <- features$featurename ## assign names to columns
+colnames(activity)[4:564] <- features$featurename ## assign names to columns
+colnames(activity)[1] <- "subject"
 
 
 ## create a data set that just comntains the standard deviations and means of the measurements
 
-## subset the data by using grepl to find columns with names matching std mean and activity (so we keep the activity labels)
+## subset the data by using grepl to find columns with names matching std, mean subject, and activity (so we keep the activity labels)
 
-activitymeanstd <- activity[grepl("std|mean|activity", names(activity))] 
-
+activitymeanstd <- activity[grepl("std\\(\\)-[XYZ]|mean\\(\\)-[XYZ]|activity|subject", names(activity))] 
 
 ## Create an independent tidy data set with the average of each variable for each activity and each subject
 
-library(data.table) ## data table has a good function for applying a function through a subset of columns
+library(data.table) ## data table .SD to apply a function through a subset of columns
 
-activitydt <- data.table(activity) ## turn activity dataframe into a data table
+activitydt <- data.table(activitymeanstd) ## turn activity dataframe into a data table
 
-meanbyactivity <- activitydt[,lapply(.SD, mean),by = activity] ## apply mean through columns by activity
+meanbyactivity <- activitydt[,lapply(.SD, mean),by = list(subject, activity)] ## apply mean through columns by activity
 
 ## write to text file for submission
 
-write.table(meanbyactivity, file = "./data/meanbyactivity.txt", row.names = FALSE)
+write.table(meanbyactivity, file = "./data/tidydata.txt", row.names = FALSE)
 
+## view tidy data
 
-
-
-
-
+data <- read.table("./data/tidydata.txt", header = TRUE) #if they used some other way of saving the file than a default write.table, this step will be different
+View(data)
